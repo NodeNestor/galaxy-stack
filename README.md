@@ -4,6 +4,8 @@ A zero-fluff web stack for building fast, cheap, static-first web apps. Built fo
 
 **Astro + SpacetimeDB + Tailwind. No WebSocket. No polling. No SDK. No SSR.**
 
+![Galaxy Stack](docs/screenshot-home.png)
+
 ```
 Static HTML (Cloudflare Pages, free)  ←→  SpacetimeDB (single VPS, ~€5/mo)
 ```
