@@ -1,0 +1,161 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Profile">
+  <div class="max-w-lg mx-auto py-8">
+    <!-- Profile card -->
+    <div id="profile-card" class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <!-- Header -->
+      <div class="bg-gradient-to-r from-blue-500 to-blue-600 h-24 relative">
+        <div class="absolute -bottom-8 left-6">
+          <div id="avatar" class="w-16 h-16 rounded-full bg-white border-4 border-white shadow-sm flex items-center justify-center text-xl font-bold text-blue-600">
+            ?
+          </div>
+        </div>
+      </div>
+
+      <!-- Info -->
+      <div class="pt-12 px-6 pb-6">
+        <div class="flex items-start justify-between">
+          <div>
+            <h1 id="display-name" class="text-xl font-bold text-gray-900">Loading...</h1>
+            <p id="user-email" class="text-sm text-gray-500 mt-0.5"></p>
+          </div>
+          <span id="auth-badge" class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
+            Anonymous
+          </span>
+        </div>
+
+        <div class="mt-4 pt-4 border-t border-gray-100">
+          <dl class="space-y-3 text-sm">
+            <div class="flex justify-between">
+              <dt class="text-gray-500">Identity</dt>
+              <dd id="identity-hex" class="font-mono text-xs text-gray-400 truncate max-w-[200px]"></dd>
+            </div>
+            <div class="flex justify-between">
+              <dt class="text-gray-500">Auth Provider</dt>
+              <dd id="auth-provider" class="text-gray-700">None</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit name -->
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mt-4">
+      <h2 class="text-sm font-semibold text-gray-900 mb-3">Edit Profile</h2>
+      <form id="name-form" class="flex gap-3">
+        <input type="text" id="new-name" maxlength="50" required
+          class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+          placeholder="Display name" />
+        <button type="submit" id="save-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm">
+          Save
+        </button>
+      </form>
+      <p id="name-feedback" class="text-xs mt-2 hidden"></p>
+    </div>
+
+    <!-- Danger zone -->
+    <div class="bg-white rounded-xl border border-red-200 shadow-sm p-6 mt-4">
+      <h2 class="text-sm font-semibold text-red-600 mb-3">Danger Zone</h2>
+      <p class="text-xs text-gray-500 mb-3">Sign out will clear your local identity token. If you haven't linked an OAuth provider, you won't be able to recover this account.</p>
+      <button id="signout-btn" class="px-4 py-2 text-sm text-red-600 border border-red-300 rounded-lg hover:bg-red-50 transition-colors">
+        Sign Out
+      </button>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  import { getStoredIdentity, clearAuth, isValidIdentity } from '../lib/auth';
+  import { query, call } from '../lib/api';
+
+  const identity = getStoredIdentity();
+
+  // Not signed in → redirect
+  if (!identity) {
+    window.location.href = '/login';
+  }
+
+  const avatarEl = document.getElementById('avatar')!;
+  const nameEl = document.getElementById('display-name')!;
+  const emailEl = document.getElementById('user-email')!;
+  const identityEl = document.getElementById('identity-hex')!;
+  const badgeEl = document.getElementById('auth-badge')!;
+  const providerEl = document.getElementById('auth-provider')!;
+  const nameInput = document.getElementById('new-name') as HTMLInputElement;
+  const nameFeedback = document.getElementById('name-feedback')!;
+
+  identityEl.textContent = identity || '';
+
+  async function loadProfile() {
+    if (!identity || !isValidIdentity(identity)) {
+      nameEl.textContent = 'Invalid identity';
+      return;
+    }
+
+    try {
+      const rows = await query("SELECT display_name, email, oauth_link FROM user WHERE identity = X'" + identity + "'");
+      if (rows.length === 0) {
+        nameEl.textContent = 'New User';
+        return;
+      }
+
+      const [name, email, oauth] = rows[0];
+      nameEl.textContent = name || 'User';
+      nameInput.value = name || '';
+      avatarEl.textContent = (name || 'U').charAt(0).toUpperCase();
+
+      if (email) {
+        emailEl.textContent = email;
+      }
+
+      if (oauth) {
+        var provider = oauth.split(':')[0];
+        providerEl.textContent = provider.charAt(0).toUpperCase() + provider.slice(1);
+        badgeEl.textContent = provider.charAt(0).toUpperCase() + provider.slice(1);
+        badgeEl.className = 'px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700';
+      }
+    } catch {
+      nameEl.textContent = 'Could not load profile';
+    }
+  }
+
+  // Update name
+  document.getElementById('name-form')!.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    var newName = nameInput.value.trim();
+    if (!newName) return;
+
+    var saveBtn = document.getElementById('save-btn')!;
+    saveBtn.textContent = 'Saving...';
+
+    var ok = await call('update_display_name', [newName]);
+
+    saveBtn.textContent = 'Save';
+    nameFeedback.classList.remove('hidden');
+
+    if (ok) {
+      nameEl.textContent = newName;
+      avatarEl.textContent = newName.charAt(0).toUpperCase();
+      nameFeedback.textContent = 'Saved!';
+      nameFeedback.className = 'text-xs mt-2 text-green-600';
+    } else {
+      nameFeedback.textContent = 'Could not save. Try again.';
+      nameFeedback.className = 'text-xs mt-2 text-red-600';
+    }
+
+    setTimeout(function() { nameFeedback.classList.add('hidden'); }, 2500);
+  });
+
+  // Sign out
+  document.getElementById('signout-btn')!.addEventListener('click', function() {
+    if (confirm('Are you sure? If you have not linked Google/GitHub, this identity is lost forever.')) {
+      clearAuth();
+      window.location.href = '/';
+    }
+  });
+
+  loadProfile();
+</script>

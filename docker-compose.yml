@@ -1,0 +1,31 @@
+services:
+  spacetimedb:
+    image: clockworklabs/spacetime:latest
+    command: start
+    ports:
+      - "3000:3000"
+    volumes:
+      - stdb-data:/home/spacetime/.local/share/spacetime
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/v1/ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  web:
+    image: node:22-slim
+    working_dir: /app
+    ports:
+      - "4321:4321"
+    volumes:
+      - ./web:/app
+      - web-node-modules:/app/node_modules
+    command: sh -c "npm install && npx astro dev --host 0.0.0.0"
+    depends_on:
+      spacetimedb:
+        condition: service_healthy
+
+volumes:
+  stdb-data:
+  web-node-modules:

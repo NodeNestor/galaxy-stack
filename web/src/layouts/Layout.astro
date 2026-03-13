@@ -1,0 +1,115 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+  <body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
+    <!-- Nav -->
+    <nav class="bg-white border-b border-gray-200 sticky top-0 z-50">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+        <div class="flex items-center gap-6">
+          <a href="/" class="text-lg font-bold tracking-tight text-gray-900 hover:text-blue-600 transition-colors">
+            <span class="inline-flex items-center gap-2">
+              <span class="w-7 h-7 bg-indigo-600 rounded-md flex items-center justify-center text-white text-xs font-bold">G</span>
+              Galaxy
+            </span>
+          </a>
+          <div class="hidden sm:flex items-center gap-1 text-sm">
+            <a href="/" class="px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">Home</a>
+            <a href="/items" class="px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">Items</a>
+          </div>
+        </div>
+        <div class="flex items-center gap-3">
+          <div id="auth-area" class="flex items-center gap-3">
+            <!-- Populated by auth island -->
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Content -->
+    <main class="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
+      <slot />
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-gray-200 bg-white">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 py-4 text-center text-xs text-gray-400">
+        Built with Galaxy Stack
+      </div>
+    </footer>
+
+    <!-- Auth island — runs on every page -->
+    <script>
+      import { getStoredIdentity, isValidIdentity } from '../lib/auth';
+      import { query } from '../lib/api';
+
+      var authArea = document.getElementById('auth-area')!;
+
+      function showSignIn() {
+        var a = document.createElement('a');
+        a.href = '/login';
+        a.className = 'text-sm px-4 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors font-medium';
+        a.textContent = 'Sign in';
+        authArea.appendChild(a);
+      }
+
+      function showUser(name: string) {
+        var a = document.createElement('a');
+        a.href = '/profile';
+        a.className = 'flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors';
+
+        var avatar = document.createElement('span');
+        avatar.className = 'w-7 h-7 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold';
+        avatar.textContent = name.charAt(0).toUpperCase();
+
+        var label = document.createElement('span');
+        label.className = 'hidden sm:inline';
+        label.textContent = name;
+
+        a.appendChild(avatar);
+        a.appendChild(label);
+        authArea.appendChild(a);
+      }
+
+      async function initAuth() {
+        var identity = getStoredIdentity();
+
+        if (!identity) {
+          showSignIn();
+          return;
+        }
+
+        if (!isValidIdentity(identity)) {
+          showSignIn();
+          return;
+        }
+
+        try {
+          var rows = await query("SELECT display_name FROM user WHERE identity = X'" + identity + "'");
+          if (rows.length > 0) {
+            showUser(rows[0][0] || 'User');
+            return;
+          }
+        } catch {}
+
+        showUser(identity.slice(0, 8) + '...');
+      }
+
+      initAuth();
+    </script>
+  </body>
+</html>
