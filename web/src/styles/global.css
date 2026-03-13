@@ -1,1 +1,16 @@
 @import "tailwindcss";
+
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-space-950: #07080f;
+  --color-space-900: #0d1117;
+  --color-space-800: #161b22;
+  --color-space-700: #21262d;
+  --color-space-600: #30363d;
+  --color-space-500: #484f58;
+  --color-space-400: #8b949e;
+  --color-space-300: #b1bac4;
+  --color-space-200: #c9d1d9;
+  --color-space-100: #e6edf3;
+}

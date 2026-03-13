@@ -9,50 +9,124 @@ const { title } = Astro.props;
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#07080f" />
     <title>{title}</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- Prevent flash: apply saved theme before render -->
+    <script is:inline>
+      if (localStorage.getItem('theme') === 'light') {
+        document.documentElement.classList.remove('dark');
+      }
+    </script>
   </head>
-  <body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
+  <body class="min-h-screen flex flex-col transition-colors duration-300
+    bg-gray-50 text-gray-900
+    dark:bg-space-950 dark:text-space-200">
+
+    <!-- Stars background (dark mode only) -->
+    <div class="fixed inset-0 overflow-hidden pointer-events-none z-0 hidden dark:block" aria-hidden="true">
+      <div class="stars"></div>
+    </div>
+
     <!-- Nav -->
-    <nav class="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <nav class="sticky top-0 z-50 transition-colors duration-300
+      bg-white border-b border-gray-200
+      dark:bg-space-900/80 dark:backdrop-blur-md dark:border-space-700/50">
       <div class="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
         <div class="flex items-center gap-6">
-          <a href="/" class="text-lg font-bold tracking-tight text-gray-900 hover:text-blue-600 transition-colors">
+          <a href="/" class="text-lg font-bold tracking-tight transition-colors
+            text-gray-900 hover:text-indigo-600
+            dark:text-space-100 dark:hover:text-indigo-400">
             <span class="inline-flex items-center gap-2">
-              <span class="w-7 h-7 bg-indigo-600 rounded-md flex items-center justify-center text-white text-xs font-bold">G</span>
+              <span class="w-7 h-7 bg-indigo-600 rounded-md flex items-center justify-center text-white text-xs font-bold shadow-lg shadow-indigo-500/20">G</span>
               Galaxy
             </span>
           </a>
           <div class="hidden sm:flex items-center gap-1 text-sm">
-            <a href="/" class="px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">Home</a>
-            <a href="/items" class="px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">Items</a>
+            <a href="/" class="px-3 py-1.5 rounded-md transition-colors
+              text-gray-600 hover:text-gray-900 hover:bg-gray-100
+              dark:text-space-400 dark:hover:text-space-100 dark:hover:bg-space-800">Home</a>
+            <a href="/discoveries" class="px-3 py-1.5 rounded-md transition-colors
+              text-gray-600 hover:text-gray-900 hover:bg-gray-100
+              dark:text-space-400 dark:hover:text-space-100 dark:hover:bg-space-800">Discoveries</a>
           </div>
         </div>
         <div class="flex items-center gap-3">
+          <!-- Theme toggle -->
+          <button id="theme-toggle" class="p-2 rounded-md transition-colors
+            text-gray-500 hover:text-gray-900 hover:bg-gray-100
+            dark:text-space-400 dark:hover:text-space-100 dark:hover:bg-space-800"
+            title="Toggle theme">
+            <!-- Sun (shown in dark mode) -->
+            <svg id="icon-sun" class="w-4 h-4 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+            </svg>
+            <!-- Moon (shown in light mode) -->
+            <svg id="icon-moon" class="w-4 h-4 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+            </svg>
+          </button>
           <div id="auth-area" class="flex items-center gap-3">
-            <!-- Populated by auth island -->
           </div>
         </div>
       </div>
     </nav>
 
     <!-- Content -->
-    <main class="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
+    <main class="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 relative z-10">
       <slot />
     </main>
 
     <!-- Footer -->
-    <footer class="border-t border-gray-200 bg-white">
-      <div class="max-w-6xl mx-auto px-4 sm:px-6 py-4 text-center text-xs text-gray-400">
+    <footer class="relative z-10 transition-colors duration-300
+      border-t border-gray-200 bg-white
+      dark:border-space-800 dark:bg-transparent">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 py-4 text-center text-xs
+        text-gray-400 dark:text-space-500">
         Built with Galaxy Stack
       </div>
     </footer>
 
-    <!-- Auth island — runs on every page -->
+    <style>
+      .stars {
+        width: 100%;
+        height: 100%;
+        background-image:
+          radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,0.6), transparent),
+          radial-gradient(1px 1px at 30% 65%, rgba(255,255,255,0.4), transparent),
+          radial-gradient(1px 1px at 50% 10%, rgba(255,255,255,0.5), transparent),
+          radial-gradient(1px 1px at 70% 40%, rgba(255,255,255,0.3), transparent),
+          radial-gradient(1px 1px at 90% 80%, rgba(255,255,255,0.5), transparent),
+          radial-gradient(1px 1px at 15% 85%, rgba(255,255,255,0.4), transparent),
+          radial-gradient(1px 1px at 45% 50%, rgba(255,255,255,0.3), transparent),
+          radial-gradient(1px 1px at 75% 15%, rgba(255,255,255,0.5), transparent),
+          radial-gradient(1px 1px at 25% 35%, rgba(255,255,255,0.2), transparent),
+          radial-gradient(1px 1px at 85% 55%, rgba(255,255,255,0.4), transparent),
+          radial-gradient(2px 2px at 5% 45%, rgba(167,139,250,0.4), transparent),
+          radial-gradient(2px 2px at 55% 75%, rgba(129,140,248,0.3), transparent),
+          radial-gradient(2px 2px at 95% 25%, rgba(167,139,250,0.3), transparent);
+      }
+    </style>
+
+    <!-- Theme toggle script -->
+    <script is:inline>
+      document.getElementById('theme-toggle').addEventListener('click', function() {
+        var html = document.documentElement;
+        if (html.classList.contains('dark')) {
+          html.classList.remove('dark');
+          localStorage.setItem('theme', 'light');
+        } else {
+          html.classList.add('dark');
+          localStorage.setItem('theme', 'dark');
+        }
+      });
+    </script>
+
+    <!-- Auth island -->
     <script>
       import { getStoredIdentity, isValidIdentity } from '../lib/auth';
       import { query } from '../lib/api';
@@ -62,7 +136,7 @@ const { title } = Astro.props;
       function showSignIn() {
         var a = document.createElement('a');
         a.href = '/login';
-        a.className = 'text-sm px-4 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors font-medium';
+        a.className = 'text-sm px-4 py-1.5 rounded-md font-medium transition-colors bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-500/20';
         a.textContent = 'Sign in';
         authArea.appendChild(a);
       }
@@ -70,10 +144,10 @@ const { title } = Astro.props;
       function showUser(name: string) {
         var a = document.createElement('a');
         a.href = '/profile';
-        a.className = 'flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors';
+        a.className = 'flex items-center gap-2 text-sm transition-colors text-gray-600 hover:text-gray-900 dark:text-space-400 dark:hover:text-space-100';
 
         var avatar = document.createElement('span');
-        avatar.className = 'w-7 h-7 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold';
+        avatar.className = 'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-400 dark:ring-1 dark:ring-indigo-500/30';
         avatar.textContent = name.charAt(0).toUpperCase();
 
         var label = document.createElement('span');
@@ -87,25 +161,11 @@ const { title } = Astro.props;
 
       async function initAuth() {
         var identity = getStoredIdentity();
-
-        if (!identity) {
-          showSignIn();
-          return;
-        }
-
-        if (!isValidIdentity(identity)) {
-          showSignIn();
-          return;
-        }
-
+        if (!identity || !isValidIdentity(identity)) { showSignIn(); return; }
         try {
           var rows = await query("SELECT display_name FROM user WHERE identity = X'" + identity + "'");
-          if (rows.length > 0) {
-            showUser(rows[0][0] || 'User');
-            return;
-          }
+          if (rows.length > 0) { showUser(rows[0][0] || 'User'); return; }
         } catch {}
-
         showUser(identity.slice(0, 8) + '...');
       }
 

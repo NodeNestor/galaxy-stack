@@ -4,18 +4,29 @@ use spacetimedb::{Identity, ReducerContext, Table, Timestamp};
 // Tables
 // ---------------------------------------------------------------------------
 
-/// User profile — created automatically on first authenticated request.
-/// The `identity` field comes from SpacetimeDB's built-in auth (JWT token).
 #[spacetimedb::table(accessor = user, public)]
 pub struct User {
     #[primary_key]
     pub identity: Identity,
     pub display_name: String,
-    /// Optional: store OAuth provider + subject ID for social login linking.
-    /// e.g. "google:118234567890" or "github:12345"
     pub oauth_link: String,
     pub email: String,
     pub online: bool,
+    pub created_at: Timestamp,
+}
+
+/// Discovered celestial bodies in the galaxy.
+#[spacetimedb::table(accessor = discovery, public)]
+pub struct Discovery {
+    #[primary_key]
+    #[auto_inc]
+    pub id: u64,
+    pub discoverer: Identity,
+    pub name: String,
+    pub body_type: String,
+    pub description: String,
+    /// Distance from Earth in light-years
+    pub distance_ly: u64,
     pub created_at: Timestamp,
 }
 
@@ -25,7 +36,7 @@ pub struct User {
 
 #[spacetimedb::reducer(init)]
 pub fn init(_ctx: &ReducerContext) {
-    log::info!("Module initialized");
+    log::info!("Galaxy module initialized");
 }
 
 #[spacetimedb::reducer(client_connected)]
@@ -36,7 +47,7 @@ pub fn on_connect(ctx: &ReducerContext) {
     } else {
         ctx.db.user().insert(User {
             identity: caller,
-            display_name: format!("User-{}", &caller.to_hex()[..8]),
+            display_name: format!("Explorer-{}", &caller.to_hex()[..8]),
             oauth_link: String::new(),
             email: String::new(),
             online: true,
@@ -57,9 +68,6 @@ pub fn on_disconnect(ctx: &ReducerContext) {
 // Auth reducers
 // ---------------------------------------------------------------------------
 
-/// Link an OAuth provider to this identity.
-/// Call this after client-side OAuth flow completes.
-/// provider_id format: "google:118234567890" or "github:12345"
 #[spacetimedb::reducer]
 pub fn link_oauth(
     ctx: &ReducerContext,
@@ -93,7 +101,6 @@ pub fn link_oauth(
     }
 }
 
-/// Update display name.
 #[spacetimedb::reducer]
 pub fn update_display_name(ctx: &ReducerContext, new_name: String) {
     let caller = ctx.sender();
@@ -111,49 +118,51 @@ pub fn update_display_name(ctx: &ReducerContext, new_name: String) {
 }
 
 // ---------------------------------------------------------------------------
-// Example: Items (replace with your domain)
+// Discovery reducers
 // ---------------------------------------------------------------------------
 
-#[spacetimedb::table(accessor = item, public)]
-pub struct Item {
-    #[primary_key]
-    #[auto_inc]
-    pub id: u64,
-    pub owner: Identity,
-    pub title: String,
-    pub description: String,
-    pub created_at: Timestamp,
-}
-
 #[spacetimedb::reducer]
-pub fn create_item(ctx: &ReducerContext, title: String, description: String) {
+pub fn log_discovery(
+    ctx: &ReducerContext,
+    name: String,
+    body_type: String,
+    description: String,
+    distance_ly: u64,
+) {
     let caller = ctx.sender();
-    let title = title.trim().to_string();
-    if title.is_empty() || title.len() > 200 {
-        log::error!("Title must be 1-200 characters");
+    let name = name.trim().to_string();
+    if name.is_empty() || name.len() > 100 {
+        log::error!("Name must be 1-100 characters");
         return;
     }
-    if description.len() > 10000 {
+    let valid_types = ["star", "planet", "nebula", "galaxy", "black hole", "asteroid", "comet", "other"];
+    if !valid_types.contains(&body_type.as_str()) {
+        log::error!("Invalid body type");
+        return;
+    }
+    if description.len() > 5000 {
         log::error!("Description too long");
         return;
     }
-    ctx.db.item().insert(Item {
+    ctx.db.discovery().insert(Discovery {
         id: 0,
-        owner: caller,
-        title,
+        discoverer: caller,
+        name,
+        body_type,
         description,
+        distance_ly,
         created_at: ctx.timestamp,
     });
 }
 
 #[spacetimedb::reducer]
-pub fn delete_item(ctx: &ReducerContext, item_id: u64) {
+pub fn delete_discovery(ctx: &ReducerContext, discovery_id: u64) {
     let caller = ctx.sender();
-    if let Some(item) = ctx.db.item().id().find(&item_id) {
-        if item.owner != caller {
-            log::error!("Only the owner can delete");
+    if let Some(d) = ctx.db.discovery().id().find(&discovery_id) {
+        if d.discoverer != caller {
+            log::error!("Only the discoverer can delete");
             return;
         }
-        ctx.db.item().id().delete(&item_id);
+        ctx.db.discovery().id().delete(&discovery_id);
     }
 }

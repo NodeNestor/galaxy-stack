@@ -1,0 +1,244 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Discoveries">
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Discoveries</h1>
+      <p class="text-sm text-gray-500 dark:text-space-400 mt-1" id="count">Loading...</p>
+    </div>
+    <button id="create-btn"
+      class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-500/20">
+      + Log Discovery
+    </button>
+  </div>
+
+  <!-- Create form -->
+  <div id="create-panel" class="hidden mb-8">
+    <form id="create-form" class="rounded-xl p-6 shadow-sm space-y-4 transition-colors
+      bg-indigo-50 border border-indigo-200
+      dark:bg-indigo-500/5 dark:border-indigo-500/20">
+      <div class="flex items-center justify-between mb-2">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-space-100">New Discovery</h2>
+        <button type="button" id="cancel-btn" class="text-sm text-gray-400 dark:text-space-500 hover:text-gray-600 dark:hover:text-space-300 transition-colors">Cancel</button>
+      </div>
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label for="name" class="block text-sm font-medium text-gray-700 dark:text-space-300 mb-1">Name</label>
+          <input type="text" id="name" name="name" maxlength="100" required
+            class="w-full rounded-lg px-3 py-2 text-sm outline-none transition-shadow
+              border border-gray-300 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
+              dark:border-space-600 dark:bg-space-800 dark:text-space-100 dark:focus:ring-indigo-500 dark:focus:border-indigo-500"
+            placeholder="e.g. Kepler-442b" />
+        </div>
+        <div>
+          <label for="body-type" class="block text-sm font-medium text-gray-700 dark:text-space-300 mb-1">Type</label>
+          <select id="body-type" name="body-type"
+            class="w-full rounded-lg px-3 py-2 text-sm outline-none transition-shadow
+              border border-gray-300 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
+              dark:border-space-600 dark:bg-space-800 dark:text-space-100 dark:focus:ring-indigo-500 dark:focus:border-indigo-500">
+            <option value="star">Star</option>
+            <option value="planet">Planet</option>
+            <option value="nebula">Nebula</option>
+            <option value="galaxy">Galaxy</option>
+            <option value="black hole">Black Hole</option>
+            <option value="asteroid">Asteroid</option>
+            <option value="comet">Comet</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label for="distance" class="block text-sm font-medium text-gray-700 dark:text-space-300 mb-1">Distance (light-years)</label>
+        <input type="number" id="distance" name="distance" min="0" required
+          class="w-full rounded-lg px-3 py-2 text-sm outline-none transition-shadow
+            border border-gray-300 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
+            dark:border-space-600 dark:bg-space-800 dark:text-space-100 dark:focus:ring-indigo-500 dark:focus:border-indigo-500"
+          placeholder="0" />
+      </div>
+      <div>
+        <label for="description" class="block text-sm font-medium text-gray-700 dark:text-space-300 mb-1">Description</label>
+        <textarea id="description" name="description" rows="3" maxlength="5000"
+          class="w-full rounded-lg px-3 py-2 text-sm outline-none transition-shadow
+            border border-gray-300 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
+            dark:border-space-600 dark:bg-space-800 dark:text-space-100 dark:focus:ring-indigo-500 dark:focus:border-indigo-500"
+          placeholder="What did you observe?"></textarea>
+      </div>
+      <div class="flex justify-end gap-3">
+        <button type="button" id="cancel-btn-2" class="px-4 py-2 text-sm text-gray-600 dark:text-space-400 hover:text-gray-900 dark:hover:text-space-100 transition-colors">Cancel</button>
+        <button type="submit" id="submit-btn"
+          class="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-500/20">
+          Log Discovery
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Discoveries grid -->
+  <div id="discoveries" class="grid gap-4">
+    <div id="empty-state" class="text-center py-16">
+      <div class="text-5xl mb-4">&#127760;</div>
+      <p class="text-gray-400 dark:text-space-500 text-sm">No discoveries yet</p>
+      <p class="text-gray-300 dark:text-space-600 text-xs mt-1">Be the first to log one</p>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="fixed bottom-6 right-6 hidden z-50">
+    <div class="bg-gray-900 dark:bg-space-700 text-white text-sm px-4 py-2.5 rounded-lg shadow-lg flex items-center gap-2">
+      <span id="toast-msg">Done</span>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  import { query, call, esc } from '../lib/api';
+  import { getStoredIdentity } from '../lib/auth';
+
+  var discoveriesEl = document.getElementById('discoveries')!;
+  var countEl = document.getElementById('count')!;
+  var emptyState = document.getElementById('empty-state')!;
+  var createForm = document.getElementById('create-form') as HTMLFormElement;
+  var createPanel = document.getElementById('create-panel')!;
+  var createBtn = document.getElementById('create-btn')!;
+  var submitBtn = document.getElementById('submit-btn')!;
+  var toast = document.getElementById('toast')!;
+  var toastMsg = document.getElementById('toast-msg')!;
+
+  var TYPE_ICONS: Record<string, string> = {
+    'star': '&#11088;',
+    'planet': '&#127759;',
+    'nebula': '&#127752;',
+    'galaxy': '&#127756;',
+    'black hole': '&#9899;',
+    'asteroid': '&#9732;',
+    'comet': '&#9732;',
+    'other': '&#10024;'
+  };
+
+  createBtn.addEventListener('click', function() {
+    createPanel.classList.toggle('hidden');
+    if (!createPanel.classList.contains('hidden')) {
+      (document.getElementById('name') as HTMLInputElement).focus();
+    }
+  });
+  document.getElementById('cancel-btn')!.addEventListener('click', function() { createPanel.classList.add('hidden'); });
+  document.getElementById('cancel-btn-2')!.addEventListener('click', function() { createPanel.classList.add('hidden'); });
+
+  function showToast(msg: string) {
+    toastMsg.textContent = msg;
+    toast.classList.remove('hidden');
+    setTimeout(function() { toast.classList.add('hidden'); }, 2500);
+  }
+
+  var currentIdentity: string | null = null;
+
+  async function fetchDiscoveries() {
+    try {
+      var rows = await query('SELECT * FROM discovery');
+      currentIdentity = getStoredIdentity();
+      renderDiscoveries(rows);
+    } catch {
+      countEl.textContent = 'Could not load discoveries';
+    }
+  }
+
+  function fmtDistance(ly: number): string {
+    if (ly >= 1000000) return (ly / 1000000).toFixed(1) + 'M ly';
+    if (ly >= 1000) return (ly / 1000).toFixed(1) + 'K ly';
+    return ly + ' ly';
+  }
+
+  function renderDiscoveries(rows: any[]) {
+    countEl.textContent = rows.length + ' discover' + (rows.length !== 1 ? 'ies' : 'y');
+    discoveriesEl.querySelectorAll('.discovery-card').forEach(function(el) { el.remove(); });
+
+    if (rows.length === 0) {
+      emptyState.style.display = '';
+      return;
+    }
+    emptyState.style.display = 'none';
+
+    for (var i = 0; i < rows.length; i++) {
+      var row = rows[i];
+      var id = row[0];
+      var owner = row[1];
+      var name = row[2];
+      var bodyType = row[3];
+      var description = row[4];
+      var distanceLy = row[5];
+
+      var icon = TYPE_ICONS[bodyType] || '&#10024;';
+      var isOwner = currentIdentity && owner === currentIdentity;
+
+      var card = document.createElement('div');
+      card.className = 'discovery-card rounded-xl p-5 shadow-sm hover:shadow-md transition-all bg-white border border-gray-200 dark:bg-space-800/50 dark:border-space-700/50 dark:shadow-none dark:hover:bg-space-800/80';
+
+      var deleteBtn = '';
+      if (isOwner) {
+        deleteBtn = '<button data-delete="' + id + '" class="text-xs text-red-400 hover:text-red-500 transition-colors p-1">Delete</button>';
+      }
+
+      card.innerHTML = '<div class="flex justify-between items-start gap-4">'
+        + '<div class="flex gap-3 min-w-0">'
+        + '<div class="text-2xl shrink-0 mt-0.5">' + icon + '</div>'
+        + '<div class="min-w-0">'
+        + '<h3 class="font-semibold text-gray-900 dark:text-space-100 truncate">' + esc(name) + '</h3>'
+        + '<div class="flex items-center gap-2 mt-1">'
+        + '<span class="inline-block px-2 py-0.5 bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400 text-xs rounded-full font-medium">' + esc(bodyType) + '</span>'
+        + '<span class="text-xs text-gray-400 dark:text-space-500">' + fmtDistance(distanceLy) + '</span>'
+        + '</div>'
+        + (description ? '<p class="text-gray-500 dark:text-space-400 text-sm mt-2 line-clamp-2">' + esc(description) + '</p>' : '')
+        + '</div>'
+        + '</div>'
+        + '<div class="flex items-center gap-2 shrink-0">'
+        + '<span class="text-xs text-gray-300 dark:text-space-600 font-mono">#' + id + '</span>'
+        + deleteBtn
+        + '</div>'
+        + '</div>';
+
+      discoveriesEl.appendChild(card);
+    }
+
+    discoveriesEl.querySelectorAll('[data-delete]').forEach(function(btn) {
+      btn.addEventListener('click', async function() {
+        var id = parseInt((btn as HTMLElement).dataset.delete!, 10);
+        var ok = await call('delete_discovery', [id]);
+        if (ok) {
+          showToast('Discovery deleted');
+          setTimeout(fetchDiscoveries, 300);
+        } else {
+          showToast('Could not delete');
+        }
+      });
+    });
+  }
+
+  createForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    submitBtn.textContent = 'Logging...';
+    submitBtn.setAttribute('disabled', '');
+
+    var name = (document.getElementById('name') as HTMLInputElement).value;
+    var bodyType = (document.getElementById('body-type') as HTMLSelectElement).value;
+    var desc = (document.getElementById('description') as HTMLTextAreaElement).value;
+    var distance = parseInt((document.getElementById('distance') as HTMLInputElement).value, 10) || 0;
+
+    var ok = await call('log_discovery', [name, bodyType, desc, distance]);
+
+    submitBtn.textContent = 'Log Discovery';
+    submitBtn.removeAttribute('disabled');
+
+    if (ok) {
+      createForm.reset();
+      createPanel.classList.add('hidden');
+      showToast('Discovery logged!');
+      setTimeout(fetchDiscoveries, 300);
+    } else {
+      showToast('Could not log discovery');
+    }
+  });
+
+  fetchDiscoveries();
+</script>

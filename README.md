@@ -4,7 +4,7 @@ A zero-fluff web stack for building fast, cheap, static-first web apps. Built fo
 
 **Astro + SpacetimeDB + Tailwind. No WebSocket. No polling. No SDK. No SSR.**
 
-![Galaxy Stack](docs/screenshot-home.png)
+![Galaxy Stack — Homepage](screenshots/home-dark.png)
 
 ```
 Static HTML (Cloudflare Pages, free)  ←→  SpacetimeDB (single VPS, ~€5/mo)
@@ -21,11 +21,16 @@ That's the whole stack. Your frontend is static files. Your backend is a single 
 
 ## What's Included
 
-- 4 pages — Home, Items (CRUD), Login, Profile
+- 4 pages — Home, Discoveries (CRUD), Login, Profile
+- Dark mode by default with light mode toggle
 - Auth system — SpacetimeDB identity tokens, OAuth-ready (Google, GitHub)
-- Tailwind v4 — clean, modern styling out of the box
+- Tailwind v4 — space-themed dark/light styling out of the box
 - CLAUDE.md — complete AI coder instructions
 - Docker dev environment — one command to run everything
+
+![Discoveries](screenshots/discoveries-dark.png)
+
+![Login](screenshots/login-dark.png)
 
 ## Quick Start
 
@@ -55,10 +60,10 @@ There are only two functions:
 
 ```typescript
 // Read data (no auth needed for public tables)
-const rows = await query('SELECT * FROM item');
+const rows = await query('SELECT * FROM discovery');
 
 // Write data (auth auto-included)
-await call('create_item', ['Title', 'Description']);
+await call('log_discovery', ['Kepler-442b', 'planet', 'Habitable zone exoplanet', 1206]);
 ```
 
 ## Auth
@@ -83,8 +88,8 @@ server/src/lib.rs       ← the entire backend (tables + reducers)
 web/src/lib/auth.ts     ← token management (automatic)
 web/src/lib/api.ts      ← query() and call() helpers
 web/src/pages/          ← Astro pages (static HTML)
-web/src/components/     ← interactive islands
-web/src/layouts/        ← shared layout with nav + auth
+web/src/layouts/        ← shared layout with nav, theme toggle, auth
+web/src/styles/         ← Tailwind + space color palette
 scripts/setup.sh        ← one-command dev setup
 scripts/publish.sh      ← rebuild WASM after server changes
 CLAUDE.md               ← AI coder instructions
