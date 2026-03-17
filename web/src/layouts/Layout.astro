@@ -16,6 +16,8 @@ const { title } = Astro.props;
     <meta name="theme-color" content="#07080f" />
     <title>{title}</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
     <!-- Prevent flash: apply saved theme before render -->
     <script is:inline>
       if (localStorage.getItem('theme') === 'light') {
@@ -151,11 +153,54 @@ const { title } = Astro.props;
       });
     </script>
 
-    <!-- Service worker registration -->
+    <!-- PWA: service worker + install prompt + standalone detection -->
     <script is:inline>
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js').catch(function() {});
-      }
+      (function() {
+        // Standalone detection
+        var isStandalone = window.matchMedia('(display-mode: standalone)').matches
+          || window.navigator.standalone === true;
+        if (isStandalone) document.body.classList.add('pwa-standalone');
+
+        // Service worker
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register('/sw.js').catch(function() {});
+        }
+
+        // Install prompt
+        var deferredPrompt = null;
+        window.addEventListener('beforeinstallprompt', function(e) {
+          e.preventDefault();
+          deferredPrompt = e;
+          if (sessionStorage.getItem('install_dismissed')) return;
+
+          var banner = document.createElement('div');
+          banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:60;padding:12px 16px;background:#111;color:#fff;display:flex;align-items:center;gap:12px;font-family:system-ui';
+
+          var text = document.createElement('div');
+          text.style.cssText = 'flex:1';
+          text.innerHTML = '<p style="font-size:14px;font-weight:600;margin:0">Install App</p><p style="font-size:12px;color:#a3a3a3;margin:2px 0 0">Faster, always available.</p>';
+
+          var installBtn = document.createElement('button');
+          installBtn.style.cssText = 'padding:8px 16px;background:#fff;color:#111;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer';
+          installBtn.textContent = 'Install';
+          installBtn.addEventListener('click', function() {
+            if (deferredPrompt) {
+              deferredPrompt.prompt();
+              deferredPrompt.userChoice.then(function() { deferredPrompt = null; banner.remove(); });
+            }
+          });
+
+          var closeBtn = document.createElement('button');
+          closeBtn.style.cssText = 'padding:4px;background:none;border:none;color:#737373;cursor:pointer';
+          closeBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 18L18 6M6 6l12 12"/></svg>';
+          closeBtn.addEventListener('click', function() { banner.remove(); sessionStorage.setItem('install_dismissed', '1'); });
+
+          banner.appendChild(text);
+          banner.appendChild(installBtn);
+          banner.appendChild(closeBtn);
+          document.body.appendChild(banner);
+        });
+      })();
     </script>
 
     <!-- Auth island -->
