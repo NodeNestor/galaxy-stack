@@ -82,8 +82,8 @@ import Layout from '../layouts/Layout.astro';
 </Layout>
 
 <script>
-  import { getStoredIdentity, clearAuth, isValidIdentity } from '../lib/auth';
-  import { query, call } from '../lib/api';
+  import { getStoredIdentity, clearAuth } from '../lib/auth';
+  import { procAuth, call } from '../lib/api';
 
   const identity = getStoredIdentity();
 
@@ -104,19 +104,23 @@ import Layout from '../layouts/Layout.astro';
   identityEl.textContent = identity || '';
 
   async function loadProfile() {
-    if (!identity || !isValidIdentity(identity)) {
-      nameEl.textContent = 'Invalid identity';
+    if (!identity) {
+      nameEl.textContent = 'Not signed in';
       return;
     }
 
     try {
-      const rows = await query("SELECT display_name, email, oauth_link FROM user WHERE identity = X'" + identity + "'");
-      if (rows.length === 0) {
+      var json = await procAuth('get_my_profile');
+      var profile = typeof json === 'string' ? JSON.parse(json) : json;
+      if (!profile) {
         nameEl.textContent = 'New User';
         return;
       }
 
-      const [name, email, oauth] = rows[0];
+      var name = profile.display_name;
+      var email = profile.email;
+      var oauth = profile.oauth_link;
+
       nameEl.textContent = name || 'User';
       nameInput.value = name || '';
       avatarEl.textContent = (name || 'U').charAt(0).toUpperCase();

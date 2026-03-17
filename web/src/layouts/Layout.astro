@@ -22,6 +22,13 @@ const { title } = Astro.props;
         document.documentElement.classList.remove('dark');
       }
     </script>
+    <style>
+      /* Hide footer when installed as PWA (standalone mode) */
+      @media (display-mode: standalone) {
+        footer { display: none !important; }
+        main { padding-bottom: env(safe-area-inset-bottom, 0); }
+      }
+    </style>
   </head>
   <body class="min-h-screen flex flex-col transition-colors duration-300
     bg-gray-50 text-gray-900
@@ -126,10 +133,35 @@ const { title } = Astro.props;
       });
     </script>
 
+    <!-- Scroll position restore on back navigation -->
+    <script is:inline>
+      if ('scrollRestoration' in history) {
+        history.scrollRestoration = 'manual';
+      }
+      var SCROLL_KEY = 'galaxy_scroll_';
+      window.addEventListener('beforeunload', function() {
+        sessionStorage.setItem(SCROLL_KEY + location.pathname, String(window.scrollY));
+      });
+      window.addEventListener('load', function() {
+        var saved = sessionStorage.getItem(SCROLL_KEY + location.pathname);
+        if (saved && performance.getEntriesByType('navigation')[0]
+            && performance.getEntriesByType('navigation')[0].type === 'back_forward') {
+          window.scrollTo(0, parseInt(saved, 10));
+        }
+      });
+    </script>
+
+    <!-- Service worker registration -->
+    <script is:inline>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').catch(function() {});
+      }
+    </script>
+
     <!-- Auth island -->
     <script>
       import { getStoredIdentity, isValidIdentity } from '../lib/auth';
-      import { query } from '../lib/api';
+      import { proc } from '../lib/api';
 
       var authArea = document.getElementById('auth-area')!;
 
@@ -163,8 +195,9 @@ const { title } = Astro.props;
         var identity = getStoredIdentity();
         if (!identity || !isValidIdentity(identity)) { showSignIn(); return; }
         try {
-          var rows = await query("SELECT display_name FROM user WHERE identity = X'" + identity + "'");
-          if (rows.length > 0) { showUser(rows[0][0] || 'User'); return; }
+          var json = await proc('get_display_name', [identity]);
+          var name = typeof json === 'string' ? JSON.parse(json) : json;
+          if (name) { showUser(name); return; }
         } catch {}
         showUser(identity.slice(0, 8) + '...');
       }

@@ -57,10 +57,62 @@ export async function call(reducer: string, args: any[] = []): Promise<boolean> 
 }
 
 // ---------------------------------------------------------------------------
+// Procedure Calls — can return data
+// ---------------------------------------------------------------------------
+
+/** Call a procedure (no auth). Returns parsed JSON response. */
+export async function proc<T = any>(name: string, args: any[] = []): Promise<T> {
+  const res = await fetch(API_BASE + '/v1/database/' + DB_NAME + '/call/' + name, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(args),
+  });
+  if (!res.ok) throw new Error('Procedure call failed: ' + res.status);
+  return res.json();
+}
+
+/** Call a procedure with auth. Returns parsed JSON response. */
+export async function procAuth<T = any>(name: string, args: any[] = []): Promise<T> {
+  const { token } = await auth();
+  const res = await fetch(API_BASE + '/v1/database/' + DB_NAME + '/call/' + name, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token,
+    },
+    body: JSON.stringify(args),
+  });
+  if (!res.ok) throw new Error('Procedure call failed: ' + res.status);
+  return res.json();
+}
+
+// ---------------------------------------------------------------------------
+// Sanitization — prevent SQL injection
+// ---------------------------------------------------------------------------
+
+/** Validate and return a hex string (for identity values in SQL). Throws on invalid input. */
+export function sanitizeHex(s: string): string {
+  if (!/^[0-9a-f]+$/i.test(s)) throw new Error('Invalid hex string');
+  return s;
+}
+
+/** Validate and return a slug (alphanumeric, hyphens, underscores). Throws on invalid input. */
+export function sanitizeSlug(s: string): string {
+  if (!/^[a-z0-9_-]+$/i.test(s)) throw new Error('Invalid slug');
+  return s;
+}
+
+/** Validate and return a numeric ID string. Throws on invalid input. */
+export function sanitizeId(s: string): string {
+  if (!/^\d+$/.test(s)) throw new Error('Invalid ID');
+  return s;
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Escape HTML to prevent XSS. */
+/** Escape HTML to prevent XSS. Use this whenever inserting user content into the DOM. */
 export function esc(s: string): string {
   const d = document.createElement('div');
   d.textContent = s;

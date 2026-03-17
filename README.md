@@ -1,36 +1,29 @@
 # Galaxy Stack
 
-A zero-fluff web stack for building fast, cheap, static-first web apps. Built for AI-assisted development.
+Production-ready starter template for SpacetimeDB + Astro applications. Static HTML frontend, Rust WASM backend, in-memory search worker. Built for AI-assisted development.
 
-**Astro + SpacetimeDB + Tailwind. No WebSocket. No polling. No SDK. No SSR.**
-
-![Galaxy Stack — Homepage](screenshots/home-dark.png)
+## Architecture
 
 ```
-Static HTML (Cloudflare Pages, free)  ←→  SpacetimeDB (single VPS, ~€5/mo)
+Browser (Cloudflare Pages)
+    |
+    +-- Static HTML + Astro islands (JS only where needed)
+    |
+    +-- HTTP to SpacetimeDB (database + auth + business logic)
+    |
+    +-- HTTP to Worker (search + file uploads)
 ```
 
-## Why Galaxy?
-
-Most stacks are bloated. You don't need a Node.js server, an ORM, a REST framework, WebSocket subscriptions, and a separate database. Galaxy replaces all of that with two things:
-
-- **Astro** — builds static HTML. Deploys to any CDN. Perfect SEO. Islands for interactivity.
-- **SpacetimeDB** — your database AND your server. Business logic in Rust WASM. Auth built in.
-
-That's the whole stack. Your frontend is static files. Your backend is a single Rust file.
+No WebSocket. No polling. No SDK. No SSR.
 
 ## What's Included
 
-- 4 pages — Home, Discoveries (CRUD), Login, Profile
-- Dark mode by default with light mode toggle
-- Auth system — SpacetimeDB identity tokens, OAuth-ready (Google, GitHub)
-- Tailwind v4 — space-themed dark/light styling out of the box
-- CLAUDE.md — complete AI coder instructions
-- Docker dev environment — one command to run everything
-
-![Discoveries](screenshots/discoveries-dark.png)
-
-![Login](screenshots/login-dark.png)
+- **SpacetimeDB server** with auth, rate limiting, owner checks, procedures (no raw SQL from frontend)
+- **Astro 5 static frontend** with Tailwind v4, dark/light theme, 4 example pages
+- **Search worker** with in-memory text index, numeric/geo filters, file uploads, incremental sync
+- **Docker Compose** for local development (SpacetimeDB + Astro + Worker)
+- **Security patterns** — XSS prevention, input validation, identity-based auth, rate limiting
+- **CLAUDE.md** — comprehensive AI coder instructions for every convention and pattern
 
 ## Quick Start
 
@@ -42,86 +35,84 @@ cd my-app
 bash scripts/setup.sh
 ```
 
-Open **http://localhost:4321**. You have a working app with auth, CRUD, and styling.
+Open **http://localhost:4321**. You have a working app with auth, CRUD, search, and styling.
 
-## How It Works
+## Stack
 
-```
-Browser loads static HTML from CDN
-  │
-  ├── Page load → fetch('SQL query') → render data
-  │
-  ├── User action → fetch('call reducer') → re-fetch data
-  │
-  └── Auth: POST /v1/identity → JWT in localStorage → auto-included on writes
-```
-
-There are only two functions:
-
-```typescript
-// Read data (no auth needed for public tables)
-const rows = await query('SELECT * FROM discovery');
-
-// Write data (auth auto-included)
-await call('log_discovery', ['Kepler-442b', 'planet', 'Habitable zone exoplanet', 1206]);
-```
-
-## Auth
-
-Auth is automatic and invisible:
-
-1. User clicks "Sign in" → SpacetimeDB creates an identity (JWT)
-2. Token stored in `localStorage`, auto-included on every write
-3. `ctx.sender()` in Rust reducers = the authenticated user
-4. Owner checks prevent unauthorized mutations
-
-**Adding Google/GitHub login:**
-
-1. Add the OAuth provider's client-side SDK
-2. On callback: `call('link_oauth', ['google:' + sub, email, name])`
-3. Done — no auth server needed
+| Layer   | Tech                           | Purpose                      |
+|---------|--------------------------------|------------------------------|
+| Frontend| Astro 5.7.5 (static output)    | HTML pages, Cloudflare Pages |
+| Styling | Tailwind v4 (@tailwindcss/vite)| Utility CSS                  |
+| Backend | SpacetimeDB 2.0 (Rust WASM)    | Database + business logic    |
+| Worker  | Rust (axum + tokio)            | Search index + file uploads  |
+| Auth    | SpacetimeDB identity tokens    | JWT stored in localStorage   |
+| Hosting | Cloudflare Pages + any VPS     | Static CDN + DB server       |
 
 ## Project Structure
 
 ```
-server/src/lib.rs       ← the entire backend (tables + reducers)
-web/src/lib/auth.ts     ← token management (automatic)
-web/src/lib/api.ts      ← query() and call() helpers
-web/src/pages/          ← Astro pages (static HTML)
-web/src/layouts/        ← shared layout with nav, theme toggle, auth
-web/src/styles/         ← Tailwind + space color palette
-scripts/setup.sh        ← one-command dev setup
-scripts/publish.sh      ← rebuild WASM after server changes
-CLAUDE.md               ← AI coder instructions
+server/src/lib.rs       — all tables, reducers, and procedures (SpacetimeDB WASM module)
+worker/src/main.rs      — worker entry point (sync loop, HTTP server, graceful shutdown)
+worker/src/index.rs     — generic in-memory search index (text, numeric, geo, pagination)
+worker/src/search.rs    — POST /search endpoint
+worker/src/upload.rs    — POST /upload + GET /files/{name} endpoints
+worker/src/health.rs    — GET /health endpoint
+web/src/lib/api.ts      — proc(), procAuth(), call() HTTP helpers
+web/src/lib/auth.ts     — identity token management (localStorage)
+web/src/pages/          — Astro pages (Home, Discoveries, Login, Profile)
+web/src/layouts/        — shared layout with nav, theme toggle, auth display
+web/src/styles/         — Tailwind + space color palette
+scripts/setup.sh        — one-command dev setup (Docker + build + publish)
+scripts/publish.sh      — rebuild + republish WASM after server changes
+CLAUDE.md               — AI coder instructions (conventions, patterns, gotchas)
+docker-compose.yml      — local dev environment
 ```
 
-## Commands
+## Development
 
-| Command | What it does |
-|---------|--------------|
-| `bash scripts/setup.sh` | First-time setup (Docker + build + publish) |
-| `bash scripts/publish.sh` | Rebuild + republish WASM after server changes |
-| `cd web && npm run build` | Build static site → `web/dist/` |
-| `docker compose up -d` | Start dev containers |
-| `docker compose down -v` | Stop + wipe data |
+| Command                    | What it does                                    |
+|----------------------------|-------------------------------------------------|
+| `bash scripts/setup.sh`   | First-time setup (Docker + build WASM + publish) |
+| `bash scripts/publish.sh` | Rebuild + republish WASM after server changes    |
+| `docker compose up -d`    | Start all services                               |
+| `docker compose down -v`  | Stop and wipe all data                           |
+| `cd web && npm run build` | Build static site for deployment (`web/dist/`)   |
+| `cd worker && cargo build --release` | Build worker binary                  |
 
-## Deploy
+### How Data Flows
 
-**Frontend:** `cd web && npm run build` → push `dist/` to Cloudflare Pages. Set `PUBLIC_STDB_URL` env var to your SpacetimeDB server.
+```
+Page load → proc('get_data') → SpacetimeDB procedure → JSON response → render
+User action → call('reducer', [args]) → SpacetimeDB reducer → re-fetch data
+Search → POST /search to worker → in-memory index → JSON results
+Upload → POST /upload to worker → saved to disk → GET /files/{name}
+```
 
-**Backend:** SpacetimeDB on any VPS. Publish the WASM module. That's it.
+## Deployment
+
+**Frontend:** Build with `cd web && npm run build`, deploy `web/dist/` to Cloudflare Pages. Set `PUBLIC_STDB_URL` to your SpacetimeDB server URL.
+
+**Backend:** Run SpacetimeDB on any VPS. Publish the WASM module with `scripts/publish.sh`.
+
+**Worker:** Build with `cd worker && cargo build --release`. Run the binary on the same VPS. Set `STDB_URL`, `STDB_DB`, `UPLOAD_DIR`, and `PORT` environment variables.
+
+## Security
+
+- **Auth:** SpacetimeDB identity tokens (JWT). Created on first interaction, stored in localStorage. `ctx.sender()` in reducers identifies the caller.
+- **No raw SQL from frontend:** All reads go through procedures (`proc()` / `procAuth()`), not direct SQL queries.
+- **Owner checks:** Every mutation verifies `thing.owner == ctx.sender()` before allowing changes.
+- **Rate limiting:** `rate_limit` table throttles expensive operations per identity.
+- **Input validation:** All strings trimmed and length-checked in reducers. Enums validated against allowlists.
+- **XSS prevention:** `esc()` helper escapes all user content before DOM insertion.
+- **OAuth-ready:** Google and GitHub sign-in scaffolded. Link to SpacetimeDB identity via `link_oauth` reducer.
 
 ## Cost
 
-| Scale | Monthly |
-|-------|---------|
-| Hobby | ~€5 (1 VPS + free Cloudflare Pages) |
-| Small | ~€15 (bigger VPS) |
-| Growth | ~€50+ (multiple nodes) |
-
-## Built for AI Coders
-
-Galaxy includes a comprehensive `CLAUDE.md` with every convention, pattern, and gotcha. Any AI assistant that reads project files will immediately know how to add tables, create pages, handle auth, and avoid pitfalls.
+| Scale  | Monthly                                    |
+|--------|--------------------------------------------|
+| Hobby  | ~5 EUR (1 VPS + free Cloudflare Pages)     |
+| Small  | ~15 EUR (bigger VPS)                       |
+| Growth | ~50+ EUR (multiple nodes, more storage)    |
 
 ## License
 

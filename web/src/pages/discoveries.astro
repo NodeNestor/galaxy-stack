@@ -93,7 +93,7 @@ import Layout from '../layouts/Layout.astro';
 </Layout>
 
 <script>
-  import { query, call, esc } from '../lib/api';
+  import { proc, call, esc } from '../lib/api';
   import { getStoredIdentity } from '../lib/auth';
 
   var discoveriesEl = document.getElementById('discoveries')!;
@@ -136,7 +136,8 @@ import Layout from '../layouts/Layout.astro';
 
   async function fetchDiscoveries() {
     try {
-      var rows = await query('SELECT * FROM discovery');
+      var json = await proc('get_discoveries');
+      var rows = typeof json === 'string' ? JSON.parse(json) : json;
       currentIdentity = getStoredIdentity();
       renderDiscoveries(rows);
     } catch {
@@ -162,12 +163,12 @@ import Layout from '../layouts/Layout.astro';
 
     for (var i = 0; i < rows.length; i++) {
       var row = rows[i];
-      var id = row[0];
-      var owner = row[1];
-      var name = row[2];
-      var bodyType = row[3];
-      var description = row[4];
-      var distanceLy = row[5];
+      var id = row.id;
+      var owner = row.owner;
+      var name = row.name;
+      var bodyType = row.body_type;
+      var description = row.description;
+      var distanceLy = row.distance_ly;
 
       var icon = TYPE_ICONS[bodyType] || '&#10024;';
       var isOwner = currentIdentity && owner === currentIdentity;

@@ -2,7 +2,7 @@
  * SpacetimeDB Identity Auth
  *
  * Flow:
- * 1. On first visit → POST /v1/identity → get { identity, token }
+ * 1. On first visit -> POST /v1/identity -> get { identity, token }
  * 2. Store token in localStorage
  * 3. Include Authorization: Bearer <token> on all reducer calls
  * 4. ctx.sender() in reducers = this identity
@@ -12,6 +12,9 @@
  * 2. Run OAuth flow client-side (Google Sign-In, etc.)
  * 3. Call link_oauth reducer with provider info
  * 4. SpacetimeDB identity is now linked to the OAuth account
+ *
+ * NOTE: Every `publish` (WASM module update) invalidates ALL tokens.
+ * Users will need to re-authenticate after deploys.
  */
 
 const TOKEN_KEY = 'stdb_token';
@@ -60,7 +63,7 @@ function saveAuth(auth: AuthState): void {
   } catch {}
 }
 
-/** Clear stored auth (logout). */
+/** Clear stored auth (logout). Also use after detecting an invalidated token. */
 export function clearAuth(): void {
   try {
     localStorage.removeItem(TOKEN_KEY);
@@ -68,7 +71,7 @@ export function clearAuth(): void {
   } catch {}
 }
 
-/** Get identity from localStorage without network call. */
+/** Get identity from localStorage without network call. Returns null if not authenticated. */
 export function getStoredIdentity(): string | null {
   try {
     return localStorage.getItem(IDENTITY_KEY);

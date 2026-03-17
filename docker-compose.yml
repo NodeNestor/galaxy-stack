@@ -1,3 +1,7 @@
+# WARNING: Do not use depends_on between services that have persistent volumes.
+# Rebuilding a dependency (e.g. spacetimedb) will recreate its volume and WIPE ALL DATA.
+# Also: every `publish` invalidates ALL existing JWT tokens.
+
 services:
   spacetimedb:
     image: clockworklabs/spacetime:latest
@@ -6,6 +10,7 @@ services:
       - "3000:3000"
     volumes:
       - stdb-data:/home/spacetime/.local/share/spacetime
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/v1/ping"]
       interval: 5s
@@ -22,10 +27,24 @@ services:
       - ./web:/app
       - web-node-modules:/app/node_modules
     command: sh -c "npm install && npx astro dev --host 0.0.0.0"
-    depends_on:
-      spacetimedb:
-        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    build: ./worker
+    ports:
+      - "8080:8080"
+    environment:
+      - STDB_URL=http://spacetimedb:3000
+      - STDB_DB=app
+      - UPLOAD_DIR=/uploads
+      - PORT=8080
+      - SYNC_INTERVAL_SECS=30
+      - RUST_LOG=worker=info
+    volumes:
+      - uploads:/uploads
+    restart: unless-stopped
 
 volumes:
   stdb-data:
   web-node-modules:
+  uploads:

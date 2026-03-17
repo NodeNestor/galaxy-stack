@@ -5,6 +5,8 @@ web/node_modules/
 web/dist/
 web/.astro/
 server/target/
+worker/target/
+uploads/
 
 # Environment
 .env
