@@ -8,8 +8,7 @@ Browser (static HTML from Cloudflare Pages)
     +-- Astro islands (client-side JS only where needed)
     |
     +-- Plain HTTP to SpacetimeDB
-        +-- POST /v1/database/{db}/sql        → reads (text/plain body)
-        +-- POST /v1/database/{db}/call/{name} → writes/procedures (JSON array body)
+        +-- POST /v1/database/{db}/call/{name} → reads (procedures) + writes (reducers)
         +-- POST /v1/identity                  → create auth identity
 ```
 
@@ -31,7 +30,7 @@ Browser (static HTML from Cloudflare Pages)
 server/src/lib.rs    — all tables, reducers, and procedures (SpacetimeDB module)
 worker/src/          — search worker (in-memory index, file uploads, HTTP API)
 web/src/lib/auth.ts  — identity token management (localStorage)
-web/src/lib/api.ts   — proc() for reads, call() for writes, query() for raw SQL (avoid in production)
+web/src/lib/api.ts   — proc() for reads, call() for writes (no raw SQL — query() removed)
 web/src/pages/       — Astro pages (static HTML)
 web/src/components/  — Astro islands (interactive UI)
 web/src/layouts/     — page layouts
@@ -78,8 +77,8 @@ pub fn get_user_stats(ctx: &ProcedureContext) -> Vec<u8> {
 ### Frontend (web/src/)
 
 - **Static output**: `output: 'static'` in astro.config.mjs — NO SSR
-- **Reads**: Use `proc('name', [args])` or `procAuth('name', [args])` from `lib/api.ts` — prefer procedures over raw SQL
-- **Raw SQL**: `query('SELECT ...')` exists in `lib/api.ts` but avoid in production — use procedures instead
+- **Reads**: Use `proc('name', [args])` or `procAuth('name', [args])` from `lib/api.ts` — NEVER use raw SQL
+- **No raw SQL**: `query()` has been removed. All reads go through server-side procedures.
 - **Writes**: Use `call('reducer_name', [args])` from `lib/api.ts` — auto-includes auth
 - **Procedures**: Use `proc('name', [args])` or `procAuth('name', [args])` from `lib/api.ts`
 - **Auth**: Handled automatically by `lib/auth.ts` on first `call()` — creates identity if needed

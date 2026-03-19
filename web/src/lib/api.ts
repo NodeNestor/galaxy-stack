@@ -20,25 +20,6 @@ async function auth(): Promise<AuthState> {
 }
 
 // ---------------------------------------------------------------------------
-// SQL Reads — public tables, no auth needed
-// ---------------------------------------------------------------------------
-
-/** Run a SQL query against the database. Returns rows from the first result. */
-export async function query<T = any[]>(sql: string): Promise<T[]> {
-  const res = await fetch(API_BASE + '/v1/database/' + DB_NAME + '/sql', {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain' },
-    body: sql,
-  });
-  if (!res.ok) throw new Error('SQL query failed: ' + res.status);
-  const data = await res.json();
-  if (Array.isArray(data) && data.length > 0 && data[0]?.rows) {
-    return data[0].rows;
-  }
-  return [];
-}
-
-// ---------------------------------------------------------------------------
 // Reducer Calls — writes, requires auth
 // ---------------------------------------------------------------------------
 
